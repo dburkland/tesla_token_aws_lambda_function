@@ -11,7 +11,7 @@ def lambda_handler(event, context):
   CLIENT_ID = "81527cff06843c8634fdc09e8ac0abefb46ac849f38fe1e431c2ef2106796384"
   EVENT_BODY = json.loads(event["body"])
   EVENT_HEADERS = event["headers"]
-  MAX_ATTEMPTS = 2
+  MAX_ATTEMPTS = 5
   TESLA_EMAIL = EVENT_BODY["TESLA_EMAIL"]
   TESLA_PASSWORD = EVENT_BODY["TESLA_PASSWORD"]
   TOKEN_URL = BASE_URL + "/token"
@@ -86,6 +86,7 @@ def lambda_handler(event, context):
         resp = session.post(
           AUTH_URL, headers=headers, params=params, data=data, allow_redirects=False
         )
+        
         if resp.ok and (resp.status_code == 302 or "<title>" in resp.text):
           print("Post auth form success after " + str({attempt +1}) + " attempts on behalf of the " + email + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS)
           break
@@ -151,13 +152,15 @@ def lambda_handler(event, context):
           resp = session.post("https://owner-api.teslamotors.com/oauth/token", headers=headers, json=payload)
           resp_json = resp.json()
         else:
-          print("Failed to retrieve the location in " + str(MAX_ATTEMPTS) + " attempts on behalf of the " + email + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS)
+          print("ERROR: Failed to retrieve the location in " + str(MAX_ATTEMPTS) + " attempts on behalf of the " + email + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS + ". Please ensure the supplied credentials are valid and try again.")
           resp_json = "empty"
+      elif "We could not sign you in" in resp.text and resp.status_code == 401:
+        print("ERROR: Invalid credentials supplied for the " + email + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS)
       else:
-        print("ERROR: Post auth form failed after " + str(MAX_ATTEMPTS) + " attempts on behalf of the " + email + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS)
+        print("ERROR: Post auth form failed after " + str(MAX_ATTEMPTS) + " attempts on behalf of the " + email + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS + ". Please ensure the supplied credentials are valid and try again.")
         resp_json = "empty"
     else:
-      print("ERROR: Get auth form failed after " + str(MAX_ATTEMPTS) + " attempts on behalf of the " + email + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS)
+      print("ERROR: Get auth form failed after " + str(MAX_ATTEMPTS) + " attempts on behalf of the " + email + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS + ". Please ensure the supplied credentials are valid and try again.")
       resp_json = "empty"
     
     return(resp_json)
@@ -184,7 +187,7 @@ def lambda_handler(event, context):
 
     RETURN_DATA_STR = json.dumps(RETURN_DATA)
   else:
-    print("ERROR: Exiting as communication with Tesla's APIs failed on behalf of the " + TESLA_EMAIL + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS)
+    print("ERROR: Exiting as communication with Tesla's APIs failed on behalf of the " + TESLA_EMAIL + " Tesla.com account connecting via " + CLIENT_IP_ADDRESS + ". Please ensure the supplied credentials are valid and try again.")
     RETURN_DATA = {
       "statusCode": 400,
       "ACCESS_TOKEN": "ERROR_NO_TOKEN",
